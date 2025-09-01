@@ -110,9 +110,7 @@ onMounted(() => {
                 <a v-if="project.demo_url" :href="project.demo_url" target="_blank" class="demo-link">访问演示站点</a>
             </div>
 
-            <div class="content-body">
-                {{ projectContentText }}
-            </div>
+        <div class="content-body" v-html="renderedContentHtml"></div> 
         </article>
     </div>
 </template>
