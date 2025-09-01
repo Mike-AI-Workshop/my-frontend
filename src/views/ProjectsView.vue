@@ -1,4 +1,4 @@
-<script>
+<script setup>
 
 //引入依赖
 import {ref,onMounted} from 'vue';
