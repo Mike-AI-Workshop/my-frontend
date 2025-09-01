@@ -13,8 +13,12 @@ const props = defineProps({
 //创建一个计算属性来处理封面图的 URL
 //这是一个很好的实践，可以把模板里的逻辑保持得更干净
 const coverImageUrl = computed(() => {
+    // 增加终极安全检查，确保 project 和 project.attributes 都存在
+    if (!props.project || !props.project.attributes) {
+        return 'https://via.placeholder.com/400x200.png?text=Invalid+Data';
+    }
+
     // 从 Strapi 获取的媒体文件数据结构比较深
-    // 增加安全检查，确保 cover_image 存在
     const coverImage = props.project.attributes.cover_image && props.project.attributes.cover_image.data;
 
     // 检查是否有封面图数据
@@ -34,7 +38,7 @@ const coverImageUrl = computed(() => {
 <template>
     <div class="project-card">
         <img :src="coverImageUrl" alt="Project cover image" class="card-image">
-        <div class="card-content">
+        <div v-if="props.project && props.project.attributes" class="card-content">
             <h3 class="card-title">{{ props.project.attributes.title }}</h3>
             <p v-if="props.project.attributes.summary" class="card-summary">
                 {{ props.project.attributes.summary }}
