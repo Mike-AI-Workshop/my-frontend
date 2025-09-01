@@ -47,11 +47,14 @@ onMounted(() =>{
         <div v-else-if="error" class="error">{{ error }}</div>
 
         <div v-else-if="projects.length > 0" class="project-grid">
-        <ProjectCard 
+            <RouterLink 
             v-for="project in projects" 
             :key="project.id"
-            :project="project"
-        />
+            :to="'/projects/' + project.slug"
+            class="project-link"
+            >
+            <ProjectCard :project="project" />
+            </RouterLink>
         </div>
 
         <div v-else class="no-projects">没有找到项目</div>
@@ -83,5 +86,10 @@ onMounted(() =>{
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 1.5rem;
+}
+/* 去掉链接默认的下划线和颜色 */
+.project-link {
+  text-decoration: none;
+  color: inherit;
 }
 </style>
