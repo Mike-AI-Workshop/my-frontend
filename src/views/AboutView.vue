@@ -1,11 +1,20 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, onUnmounted, computed, nextTick } from 'vue';
 import { marked } from 'marked';
 import apiClient from '../api';
+import { gsap } from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+
+gsap.registerPlugin(ScrollTrigger);
 
 const aboutData = ref(null);
 const isLoading = ref(true);
 const error = ref(null);
+
+const titleRef = ref(null);
+const emailRef = ref(null);
+const storyRef = ref(null);
+let ctx;
 
 // Helper function to convert Strapi's JSON content to a Markdown string
 const strapiJsonToMarkdown = (content) => {
@@ -57,8 +66,31 @@ const renderedStoryHtml = computed(() => {
   return '';
 });
 
-onMounted(() => {
-  fetchAboutData();
+onMounted(async () => {
+  await fetchAboutData();
+  await nextTick();
+
+  ctx = gsap.context(() => {
+    if (titleRef.value && emailRef.value && storyRef.value) {
+        const tl = gsap.timeline({
+            scrollTrigger: {
+                trigger: titleRef.value,
+                start: "top 80%",
+                toggleActions: "play none none none",
+            }
+        });
+
+        tl.from(titleRef.value, { opacity: 0, y: 50, duration: 0.8 })
+          .from(emailRef.value, { opacity: 0, duration: 0.5 }, "-=0.3")
+          .from(storyRef.value, { opacity: 0, y: 20, duration: 0.8 }, "-=0.4");
+    }
+  });
+});
+
+onUnmounted(() => {
+    if (ctx) {
+        ctx.revert();
+    }
 });
 </script>
 
@@ -71,9 +103,9 @@ onMounted(() => {
       <p>{{ error }}</p>
     </div>
     <div v-else-if="aboutData" class="about-content">
-      <h1>{{ aboutData.title }}</h1>
-      <a v-if="aboutData.email" :href="`mailto:${aboutData.email}`" class="email-link">{{ aboutData.email }}</a>
-      <div class="story-content" v-html="renderedStoryHtml"></div>
+      <h1 ref="titleRef">{{ aboutData.title }}</h1>
+      <a v-if="aboutData.email" :href="`mailto:${aboutData.email}`" class="email-link" ref="emailRef">{{ aboutData.email }}</a>
+      <div class="story-content" v-html="renderedStoryHtml" ref="storyRef"></div>
     </div>
   </div>
 </template>

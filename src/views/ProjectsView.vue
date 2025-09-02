@@ -1,7 +1,11 @@
 <script setup>
 
 //引入依赖
-import {ref,onMounted} from 'vue';
+import {ref, onMounted, onUnmounted, nextTick} from 'vue';
+import { gsap } from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+
+gsap.registerPlugin(ScrollTrigger);
 import apiClient from '../api'; //引入我们配置好的 api
 //导入了我们创建的 ProjectCard 组件
 import ProjectCard from '../components/ProjectCard.vue';
@@ -10,6 +14,10 @@ import ProjectCard from '../components/ProjectCard.vue';
 const projects = ref([]);
 const isLoading = ref(true);//用于追踪加载状态
 const error = ref(null);//用于存储错误信息
+
+const titleRef = ref(null);
+const gridRef = ref(null);
+let ctx;
 
 //定义一个函数来获取数据
 const fetchProjects = async() =>{
@@ -34,19 +42,46 @@ const fetchProjects = async() =>{
 // 使用 onMounted 生命周期钩子
 // onMounted 里的代码会在组件第一次渲染到屏幕上之后执行
 // 这是发起初始数据请求的理想位置
-onMounted(() =>{
-    fetchProjects();
+onMounted(async () =>{
+    await fetchProjects();
+    await nextTick();
+
+    ctx = gsap.context(() => {
+        if (titleRef.value && gridRef.value) {
+            const tl = gsap.timeline({
+                scrollTrigger: {
+                    trigger: titleRef.value,
+                    start: "top 80%",
+                    toggleActions: "play none none none",
+                }
+            });
+
+            tl.from(titleRef.value, { opacity: 0, y: 50, duration: 0.8 })
+              .from(gridRef.value.children, {
+                  opacity: 0,
+                  y: 30,
+                  duration: 0.6,
+                  stagger: 0.1
+              }, "-=0.4");
+        }
+    });
+});
+
+onUnmounted(() => {
+    if (ctx) {
+        ctx.revert();
+    }
 });
 
 </script>
 
 <template>
     <div class="projects-view">
-        <h1> 我的精选项目集 </h1>
+        <h1 ref="titleRef"> 我的精选项目集 </h1>
         <div v-if="isLoading" class="loading">正在加载中...</div>
         <div v-else-if="error" class="error">{{ error }}</div>
 
-        <div v-else-if="projects.length > 0" class="project-grid">
+        <div v-else-if="projects.length > 0" class="project-grid" ref="gridRef">
             <RouterLink 
             v-for="project in projects" 
             :key="project.id"

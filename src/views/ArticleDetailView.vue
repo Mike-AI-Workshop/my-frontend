@@ -1,13 +1,22 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, onUnmounted, computed, nextTick } from 'vue';
 import { useRoute } from 'vue-router';
 import { marked } from 'marked';
 import apiClient from '../api';
+import { gsap } from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+
+gsap.registerPlugin(ScrollTrigger);
 
 const route = useRoute();
 const article = ref(null);
 const isLoading = ref(true);
 const error = ref(null);
+
+const titleRef = ref(null);
+const metaRef = ref(null);
+const contentRef = ref(null);
+let ctx;
 
 // Helper function to convert Strapi's content to a Markdown string
 const strapiJsonToMarkdown = (content) => {
@@ -73,8 +82,31 @@ const renderedContentHtml = computed(() => {
   return '';
 });
 
-onMounted(() => {
-  fetchArticle();
+onMounted(async () => {
+  await fetchArticle();
+  await nextTick();
+
+  ctx = gsap.context(() => {
+    if (titleRef.value && metaRef.value && contentRef.value) {
+        const tl = gsap.timeline({
+            scrollTrigger: {
+                trigger: titleRef.value,
+                start: "top 80%",
+                toggleActions: "play none none none",
+            }
+        });
+
+        tl.from(titleRef.value, { opacity: 0, y: 50, duration: 0.8 })
+          .from(metaRef.value, { opacity: 0, duration: 0.5 }, "-=0.5")
+          .from(contentRef.value, { opacity: 0, y: 20, duration: 0.8 }, "-=0.3");
+    }
+  });
+});
+
+onUnmounted(() => {
+    if (ctx) {
+        ctx.revert();
+    }
 });
 </script>
 
@@ -87,12 +119,12 @@ onMounted(() => {
       <p>{{ error }}</p>
     </div>
     <article v-else-if="article" class="article-content">
-      <h1>{{ article.title }}</h1>
-      <div class="meta-info" v-if="article.publish_at">
+      <h1 ref="titleRef">{{ article.title }}</h1>
+      <div class="meta-info" v-if="article.publish_at" ref="metaRef">
         <span>发布于：{{ new Date(article.publish_at).toLocaleDateString() }}</span>
       </div>
       
-      <div class="content-body" v-html="renderedContentHtml"></div>
+      <div class="content-body" v-html="renderedContentHtml" ref="contentRef"></div>
     </article>
   </div>
 </template>

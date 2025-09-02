@@ -1,14 +1,22 @@
 <script setup>
 import { useRoute } from 'vue-router';
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, onUnmounted, computed, nextTick } from 'vue';
 import apiClient from '../api'; // 引入 apiClient
 import { marked } from 'marked';
+import { gsap } from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+
+gsap.registerPlugin(ScrollTrigger);
 
 //调用 useRoute() 钩子，它会返回一个包含当前路由信息的对象
 const route = useRoute();
 const project = ref(null); // 用来存储完整的项目对象，初始值为 null
 const isLoading = ref(true);
 const error = ref(null);
+const titleRef = ref(null);
+const metaRef = ref(null);
+const contentRef = ref(null);
+let ctx; // GSAP context for cleanup
 
 //"翻译器"函数
 const strapiJsonToMarkdown = (contentJson) => {
@@ -86,9 +94,35 @@ const fetchProject = async () => {
 }
 
 //在组件挂载后调用该函数
-onMounted(() => {
-    fetchProject();
-})
+onMounted(async () => {
+    await fetchProject();
+
+    // Wait for the DOM to update after fetching data
+    await nextTick();
+
+    // Set up animations within a GSAP context for easy cleanup
+    ctx = gsap.context(() => {
+        if (titleRef.value && metaRef.value && contentRef.value) {
+            const tl = gsap.timeline({
+                scrollTrigger: {
+                    trigger: titleRef.value,
+                    start: "top 80%",
+                    toggleActions: "play none none none",
+                }
+            });
+
+            tl.from(titleRef.value, { opacity: 0, y: 50, duration: 0.8 })
+              .from(metaRef.value, { opacity: 0, duration: 0.5 }, "-=0.3")
+              .from(contentRef.value, { opacity: 0, y: 20, duration: 0.8 }, "-=0.4");
+        }
+    });
+});
+
+onUnmounted(() => {
+    if (ctx) {
+        ctx.revert(); // Cleanup GSAP animations and ScrollTriggers
+    }
+});
 </script>
 
 <template>
@@ -103,14 +137,14 @@ onMounted(() => {
         </div>
 
         <article v-else-if="project" class="project-content">
-            <h1>{{ project.title }}</h1>
+            <h1 ref="titleRef">{{ project.title }}</h1>
 
-            <div class="meta-info">
+            <div class="meta-info" ref="metaRef">
                 <span v-if="project.publish_at">发布于: {{ new Date(project.publish_at).toLocaleDateString() }}</span>
                 <a v-if="project.demo_url" :href="project.demo_url" target="_blank" class="demo-link">访问演示站点</a>
             </div>
 
-        <div class="content-body" v-html="renderedContentHtml"></div> 
+        <div class="content-body" v-html="renderedContentHtml" ref="contentRef"></div> 
         </article>
     </div>
 </template>

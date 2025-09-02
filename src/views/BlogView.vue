@@ -1,11 +1,19 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, onUnmounted, nextTick } from 'vue';
+import { gsap } from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+
+gsap.registerPlugin(ScrollTrigger);
 import apiClient from '../api';
 import ArticleCard from '../components/ArticleCard.vue';
 
 const articles = ref([]);
 const isLoading = ref(true);
 const error = ref(null);
+
+const titleRef = ref(null);
+const gridRef = ref(null);
+let ctx;
 
 const fetchArticles = async () => {
   try {
@@ -19,14 +27,41 @@ const fetchArticles = async () => {
   }
 };
 
-onMounted(() => {
-  fetchArticles();
+onMounted(async () => {
+  await fetchArticles();
+  await nextTick();
+
+  ctx = gsap.context(() => {
+    if (titleRef.value && gridRef.value) {
+        const tl = gsap.timeline({
+            scrollTrigger: {
+                trigger: titleRef.value,
+                start: "top 80%",
+                toggleActions: "play none none none",
+            }
+        });
+
+        tl.from(titleRef.value, { opacity: 0, y: 50, duration: 0.8 })
+          .from(gridRef.value.children, {
+              opacity: 0,
+              y: 30,
+              duration: 0.6,
+              stagger: 0.1
+          }, "-=0.4");
+    }
+  });
+});
+
+onUnmounted(() => {
+    if (ctx) {
+        ctx.revert();
+    }
 });
 </script>
 
 <template>
   <div class="blog-view">
-    <h1>我的博客文章</h1>
+    <h1 ref="titleRef">我的博客文章</h1>
 
     <div v-if="isLoading" class="loading-state">
       <p>正在加载文章...</p>
@@ -36,7 +71,7 @@ onMounted(() => {
       <p>{{ error }}</p>
     </div>
 
-    <div v-else-if="articles.length > 0" class="article-grid">
+    <div v-else-if="articles.length > 0" class="article-grid" ref="gridRef">
       <RouterLink
         v-for="article in articles"
         :key="article.id"
